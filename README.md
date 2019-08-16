@@ -100,6 +100,9 @@ The source code defines:
  - the file (relative path)
  - `pollinStrategy` - watching the file for changes, application can listen on such changes
  - `optional` - the startup sequence will not fail if file is missing
+ - we have also added a `se-test.yaml` optional configuration to allow unit tests
+    to override configuration (such as security), so our unit tests can run
+    on a different port and use different security
 
 ```java
 import io.helidon.config.PollingStrategies;
@@ -112,7 +115,8 @@ import static io.helidon.config.ConfigSources.file;
 private static Config buildConfig() {
     return Config.builder()
         .sources(
-                file("conf/se.yaml")
+                classpath("se-test.yaml").optional(),
+                file("../conf/se.yaml")
                         .pollingStrategy(PollingStrategies::watch)
                         .optional(),
                 classpath("application.yaml"))
@@ -136,6 +140,9 @@ app:
 ```
 Now after restart, the message should be changed.
 
+If the application is started from the `helidon-quickstart-se` folder, the 
+ configuration is correctly located.
+
 ### Custom configuration file in Helidon MP
 Let's add a `buildConfig` method to the `Main` class of Helidon MP. 
 The source code defines:
@@ -155,7 +162,7 @@ import static io.helidon.config.ConfigSources.file;
 private static Config buildConfig() {
     return Config.builder()
         .sources(
-                file("conf/mp.yaml")
+                file("../conf/mp.yaml")
                         .pollingStrategy(PollingStrategies::watch)
                         .optional(),
                 classpath("application.yaml").optional(),
@@ -184,6 +191,8 @@ app:
 ```
 
 Validate that the configuration was used by our MP application.
+If the application is started from the `helidon-quickstart-mp` folder, the 
+ configuration is correctly located.
 
 
 ## 5. Configuration changes (SE)
@@ -490,6 +499,22 @@ This adds a few dependencies to our project:
     <groupId>org.glassfish.jersey.inject</groupId>
     <artifactId>jersey-hk2</artifactId>
 </dependency>
+```
+
+Add a `WebTarget` to the `GreetService`:
+
+```
+private WebTarget webTarget;
+```
+
+Update the constuctor to set up the client and configure the `WebTarget`:
+
+```
+Client jaxRsClient = ClientBuilder.newBuilder()
+        .register(new ClientSecurityFeature())
+        .build();
+
+webTarget = jaxRsClient.target("http://localhost:8081/greet");
 ```
 
 Let's add a new routing method to our `GreetService` in `update(Rules)` method:
